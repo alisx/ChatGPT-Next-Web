@@ -5,14 +5,22 @@ const DEFAULT_PROTOCOL = "https";
 const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
 const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
 const DISABLE_GPT4 = !!process.env.DISABLE_GPT4;
+const USE_AZURE = !!process.env.USE_AZURE;
+const AZURE_DEPLOYMENT_ID = process.env.AZURE_DEPLOYMENT_ID ?? "";
+const AZURE_API_VERSION = process.env.AZURE_API_VERSION ?? "";
 
 export async function requestOpenai(req: NextRequest) {
   const controller = new AbortController();
   const authValue = req.headers.get("Authorization") ?? "";
-  const openaiPath = `${req.nextUrl.pathname}${req.nextUrl.search}`.replaceAll(
-    "/api/openai/",
-    "",
-  );
+  let openaiPath = "";
+  if (!USE_AZURE) {
+    openaiPath = `${req.nextUrl.pathname}${req.nextUrl.search}`.replaceAll(
+      "/api/openai/",
+      "",
+    );
+  } else {
+    openaiPath = `openai/deployments/${AZURE_DEPLOYMENT_ID}/chat/completions?api-version=${AZURE_API_VERSION}`;
+  }
 
   let baseUrl = BASE_URL;
 
@@ -32,13 +40,21 @@ export async function requestOpenai(req: NextRequest) {
   }, 10 * 60 * 1000);
 
   const fetchUrl = `${baseUrl}/${openaiPath}`;
+  console.log("[fetch Url]", fetchUrl);
+
   const fetchOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
-      Authorization: authValue,
-      ...(process.env.OPENAI_ORG_ID && {
-        "OpenAI-Organization": process.env.OPENAI_ORG_ID,
-      }),
+      ...(USE_AZURE
+        ? {
+            "api-key": authValue.replace("Bearer", "").trim(),
+          }
+        : {
+            Authorization: authValue,
+            ...(process.env.OPENAI_ORG_ID && {
+              "OpenAI-Organization": process.env.OPENAI_ORG_ID,
+            }),
+          }),
     },
     cache: "no-store",
     method: req.method,
@@ -78,7 +94,8 @@ export async function requestOpenai(req: NextRequest) {
     // to prevent browser prompt for credentials
     const newHeaders = new Headers(res.headers);
     newHeaders.delete("www-authenticate");
-    // to disable nginx buffering
+
+    // to disbale ngnix buffering
     newHeaders.set("X-Accel-Buffering", "no");
 
     return new Response(res.body, {
