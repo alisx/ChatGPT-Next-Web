@@ -5,15 +5,26 @@ const DEFAULT_PROTOCOL = "https";
 const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
 const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
 const DISABLE_GPT4 = !!process.env.DISABLE_GPT4;
-const USE_AZURE = !!process.env.USE_AZURE;
+let USE_AZURE = !!process.env.USE_AZURE;
 const AZURE_DEPLOYMENT_ID = process.env.AZURE_DEPLOYMENT_ID ?? "";
 const AZURE_API_VERSION = process.env.AZURE_API_VERSION ?? "";
 
 export async function requestOpenai(req: NextRequest) {
   const controller = new AbortController();
+  console.log("USE_AZURE:", USE_AZURE);
   const authValue = req.headers.get("Authorization") ?? "";
+  // console.log("[requestOpenai] authValue:", authValue);
+
+  const apiKey = authValue.replace("Bearer", "").trim();
+  if (apiKey.startsWith("sk-")) {
+    USE_AZURE = false;
+  }
+  console.log("apiKey:", apiKey);
+  console.log("USE_AZURE:", USE_AZURE);
   let openaiPath = "";
+  let baseUrl = BASE_URL;
   if (!USE_AZURE) {
+    baseUrl = OPENAI_URL;
     openaiPath = `${req.nextUrl.pathname}${req.nextUrl.search}`.replaceAll(
       "/api/openai/",
       "",
@@ -21,8 +32,6 @@ export async function requestOpenai(req: NextRequest) {
   } else {
     openaiPath = `openai/deployments/${AZURE_DEPLOYMENT_ID}/chat/completions?api-version=${AZURE_API_VERSION}`;
   }
-
-  let baseUrl = BASE_URL;
 
   if (!baseUrl.startsWith("http")) {
     baseUrl = `${PROTOCOL}://${baseUrl}`;
@@ -47,7 +56,7 @@ export async function requestOpenai(req: NextRequest) {
       "Content-Type": "application/json",
       ...(USE_AZURE
         ? {
-            "api-key": authValue.replace("Bearer", "").trim(),
+            "api-key": apiKey,
           }
         : {
             Authorization: authValue,
@@ -89,6 +98,8 @@ export async function requestOpenai(req: NextRequest) {
   }
 
   try {
+    console.log("fetchOptions.headers:", fetchOptions.headers);
+    // console.log("fetchOptions.body:", fetchOptions.body);
     const res = await fetch(fetchUrl, fetchOptions);
 
     // to prevent browser prompt for credentials
