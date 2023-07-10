@@ -248,7 +248,7 @@ export function RenderExport(props: {
       return {
         id: i.toString(),
         role: role as any,
-        content: role == "user" ? v.innerText : v.innerHTML,
+        content: role == "user" ? (v as HTMLElement).innerText : v.innerHTML,
         date: "",
       };
     });
