@@ -27,6 +27,7 @@ export class ChatGPTApi implements LLMApi {
   private disableListModels = true;
 
   path(path: string): string {
+    // 将path 参数补充完整
     let openaiUrl = useAccessStore.getState().openaiUrl;
     if (openaiUrl.length === 0) {
       openaiUrl = DEFAULT_API_HOST;
@@ -133,6 +134,7 @@ export class ChatGPTApi implements LLMApi {
 
               if (res.status === 401) {
                 responseTexts.push(Locale.Error.Unauthorized);
+                location.href = "/#/auth";
               }
 
               if (extraInfo) {

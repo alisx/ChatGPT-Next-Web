@@ -19,10 +19,9 @@ export function AuthPage() {
       <div className={`no-dark ${styles["auth-logo"]}`}>
         <BotIcon />
       </div>
-
       <div className={styles["auth-title"]}>{Locale.Auth.Title}</div>
       <div className={styles["auth-tips"]}>{Locale.Auth.Tips}</div>
-
+      <img src="qrcode3.png"></img>
       <input
         className={styles["auth-input"]}
         type="password"
